@@ -8,6 +8,7 @@
  */
 
  const LOG_LEVEL = 'info';
+ const INITIATOR = 'initiator';
 
  const browserParams = {};
  window.location.search.slice(1).split('&').map(pair => pair.split('=')).forEach(pair => {
@@ -19,6 +20,7 @@
  const SERVER_KEY = browserParams.serverKey || 'dc95f32ebccebf40a8836e9923cc3508968f3ea6ce50de67fda8706cfa689255';
  const TRUSTED_KEY = browserParams.trustedKey;
  const PUBLIC_KEY = browserParams.publicKey;
+ const ROLE = browserParams.role || INITIATOR; // initiator | responder
  const HOST = browserParams.serverHost || 'saltyrtc.provable.dev';
  const PORT = 443;
  const STUN_SERVER = 'stun.l.google.com:19302';
@@ -123,8 +125,11 @@
              .withServerKey(SERVER_KEY)
              .withTrustedPeerKey(TRUSTED_KEY)
              .withPingInterval(30)
-             .usingTasks(tasks)
-             .asInitiator();
+             .usingTasks(tasks);
+         if (ROLE === INITIATOR) {
+            this.client = this.client.asInitiator();
+         }
+         else this.client = this.client.asResponder();
          this.client.on('state-change', this.onStateChange.bind(this));
          this.client.on('connection-error', this.onConnectionError.bind(this));
          this.client.on('connection-closed', this.onConnectionClosed.bind(this));
@@ -180,9 +185,16 @@
          // Let the "negotiationneeded" event trigger offer generation
          this.pc.onnegotiationneeded = () => {
              console.debug('Negotiation needed...');
-             this.initiatorFlow().catch((e) => {
-                 console.error('Unable to send error:', e);
-             });
+             if (ROLE === INITIATOR) {
+                this.initiatorFlow().catch((e) => {
+                    console.error('Unable to send error:', e);
+                });
+             }
+             else {
+                this.responderFlow().catch((e) => {
+                    console.error('Unable to send error:', e);
+                });
+             }
          };
  
          // Handle state changes
@@ -332,6 +344,24 @@
          console.debug('Send offer to peer');
          // noinspection JSCheckFunctionSignatures
          this.task.sendOffer(offer);
+     }
+
+     async responderFlow() {
+        this.task.once('offer', async (offer) => {
+            console.warn('Offer', offer);
+            console.debug('Set remote description');
+            await this.pc.setRemoteDescription(offer.data);
+
+            const answer = await this.pc.createAnswer()
+            console.warn('createAnswer', answer);
+            console.debug('Set local description');
+            await this.pc.setLocalDescription(answer);
+
+            console.debug('Send answer to peer');
+            // noinspection JSCheckFunctionSignatures
+            this.task.sendAnswer(answer);
+
+        });
      }
  
      createMuchSecureChannel() {
