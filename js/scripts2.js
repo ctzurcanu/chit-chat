@@ -7,7 +7,7 @@
  * copied, modified, or distributed except according to those terms.
  */
 
- const LOG_LEVEL = 'info';
+ const LOG_LEVEL = 'debug';
  const INITIATOR = 'initiator';
 
  const browserParams = {};
