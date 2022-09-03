@@ -7,8 +7,20 @@
  * copied, modified, or distributed except according to those terms.
  */
 
+    // initiator creates offer
+    // initiator setLocalDescription(offer)
+    // initiator sendOffer
+    // receiver listens for offer
+    // receiver setRemoteDescription(offer)
+    // receiver createAnswer()
+    // receiver setLocalDescription(answer)
+    // receiver sendAnswer(answer)
+    // initiator listens for answer
+    // initiator setRemoteDescription(answer)
+
  const LOG_LEVEL = 'debug';
  const INITIATOR = 'initiator';
+ const RESPONDER = 'responder';
 
  const browserParams = {};
  window.location.search.slice(1).split('&').map(pair => pair.split('=')).forEach(pair => {
@@ -221,6 +233,10 @@
          // Log incoming data channels
          this.pc.ondatachannel = (e) => {
              console.debug('New data channel was created:', e.channel.label);
+             if (ROLE === RESPONDER) {
+                console.log('Responder - create channel');
+                this.createMuchSecureChannel(e.channel);
+             }
          };
  
          // Create data channel for handover and initiate handover once open
@@ -230,7 +246,10 @@
          this.client.on('handover', () => {
              console.info('Handover done');
              this.setState('handover', 'yes');
-             this.createMuchSecureChannel();
+             if (ROLE === INITIATOR) {
+                console.log('Initiator - create channel');
+                this.createMuchSecureChannel();
+             }
          });
      }
  
